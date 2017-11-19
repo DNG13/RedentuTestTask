@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Image as ImageModel;
 use Image;
+use Illuminate\Support\Facades\File;
 use App\Helpers\ImageBrightnessHelper;
 
 class ImageController extends Controller
@@ -62,42 +63,44 @@ class ImageController extends Controller
         ]);
         if($request->hasFile('main_file')){
 
-            //$image = new ImageModel;
             $imageFile = $request->file('main_file');
             $imageName = uniqid(). $imageFile->getClientOriginalName();
             $extension = $imageFile->extension();
             $imageFile->move(public_path('uploads'), $imageName);
             $imagePath = public_path('uploads').'/'.$imageName;
 
-            //get image height and width
-            $imageSize = getimagesize( $imagePath);
-            $imageWidth = $imageSize[0];
-            $imageHeight = $imageSize[1];
-
             //find out color of image
             $luminance = $imageBright->run($imagePath, $extension);
             // create Image from file
             $img = Image::make($imagePath);
+            //get image height and width
+            $imageHeight = $img->height();
+            //$imageWidth = $img->width();
 
             if($request->get('wm')=='file'){
                 if($request->hasFile('file')){
+
                     $imageFileWm = $request->file('file');
                     $imageRealPath = $imageFileWm->getRealPath();
 
                     //parameters for resizing watermark
-                    $wmWidth  = $imageWidth/5;
-                    $wmHeight = $imageHeight/5;
+                    $wmHeight = $imageHeight/10;
                     // create a new Image instance for inserting
                     $watermark = Image::make($imageRealPath);
-                    $watermark->resize( $wmWidth, $wmHeight );
+                    $watermark->resize( null, $wmHeight, function ($constraint) {
+                        $constraint->aspectRatio();
+                    });
 
-                    //insert a watermark
-                    $img->insert( $watermark, 'center');
+                    //get extension for watermark
+                    $wmExtension = ($watermark->mime()=='image/png')?'png':'';
 
-                    //save the image as a new file
-                    $img->save($imagePath);
+                    //find out color of watermark
+                    $wmLuminance = $imageBright->run($imageRealPath, $wmExtension);
 
-//                    return response()->json(['Status'=>true, 'Message'=>'ok with file']);
+                    // invert colour of watermark if the same as image
+                    if( $luminance ==  $wmLuminance){
+                        $watermark->invert();
+                    }
                 }else{
                     return response()->json(['Status'=>true, 'Message'=>'Error with watermark file']);
                 }
@@ -105,34 +108,49 @@ class ImageController extends Controller
             elseif($request->get('wm')=='text'){
                 if($request->get('text')){
                     //color of text
-                    $color =($luminance ==('dark')?'#FFFFFF':'#000000');
-                    dd($color);
+                    $color =($luminance ==('light')?'#FFFFFF':'#000000');
+                    $size = $imageHeight/15;
+                    // create a new empty image resource
+                    $watermark = Image::canvas( $size*10, $size);
                     // write text
-                    $img->text($request->get('text'), 0, 0, function($font) use ($color) {
-                        $font->size(80);
+                    $watermark->text($request->get('text'), 0, 0, function($font) use ($color, $size) {
+                        $font->file( public_path('fonts/Marlboro.ttf'));
+                        $font->size($size);
                         $font->color($color);
-                        $font->align('center');
+                        $font->align('left');
                         $font->valign('top');
-                        $font->angle(45);
                     });
-                    $img->save($imagePath);
-//                    return response()->json(['Status'=>true, 'Message'=>'ok with text']);
+                    //save watermark if need
+                    $watermark->save('uploads/watermarks'.uniqid().$request->get('text').'.png');
                 }
                 else{
                     return response()->json(['Status'=>true, 'Message'=>'Error with watermark text']);
                 }
             }else{
-//                return response()->json(['Status'=>true, 'Message'=>'Error with watermark']);
+                return response()->json(['Status'=>true, 'Message'=>'Error with watermark']);
             }
-//            $image = new ImageModel;
-//            $file = $request->file('main_file');
-//            $extension = $file->extension();
-//            $fileObject = $file->openFile();
-//            $fileObject->rewind();
-//            $content = $fileObject->fread($fileObject->getSize());
-//            $image->image = $content;
-//            $image->save();
-//            return response()->json(['Status'=>true, 'Message'=>'Image uploaded']);
+
+            // create new Intervention Image and turn it into greyscale version
+            $watermark->greyscale();
+
+            //set transparency to 50%
+            $watermark->opacity(50);
+
+            //insert a watermark
+            $img->insert( $watermark, 'bottom-left');
+
+            //save the image as a new file
+            $img->save($imagePath);
+
+            //save image to database
+            $image = new ImageModel;
+            $content = File::get($imagePath);
+            $image->image = $content;
+            $image->save();
+
+            //destroy resource
+            $watermark->destroy();
+            $img->destroy();
         }
         return view('image.upload1');
     }
