@@ -108,7 +108,7 @@ class ImageController extends Controller
                     $color =($luminance ==('dark')?'#FFFFFF':'#000000');
                     dd($color);
                     // write text
-                    $img->text($request->get('text'), 0, 0, function($font) {
+                    $img->text($request->get('text'), 0, 0, function($font) use ($color) {
                         $font->size(80);
                         $font->color($color);
                         $font->align('center');
