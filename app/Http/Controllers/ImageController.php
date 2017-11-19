@@ -19,11 +19,6 @@ class ImageController extends Controller
         ]);
         if($request->hasFile('file')){
             $image = new ImageModel;
-
-            //$imageFile = $request->file('file');
-            //$imageName = uniqid(). $imageFile->getClientOriginalName();
-            //$imageFile->move(public_path('uploads'), $imageName);
-
             $file = $request->file('file');
             $extension = $file->clientExtension();
             $fileObject = $file->openFile();
@@ -32,10 +27,6 @@ class ImageController extends Controller
             $image->image = $content;
             $image->save();
             return response()->json(['Status'=>true, 'Message'=>'Image uploaded']);
-
-//            $image = new Image;
-//            $image->image =  $request->file->store('file');
-//            $image->save();
         }
         return redirect('/show');
     }
@@ -58,8 +49,11 @@ class ImageController extends Controller
         $this->validate($request,[
             'main_file' => 'required|image|mimes:jpeg,jpg,png',
             'file' => 'required_without:text|nullable|image|mimes:jpeg,jpg,png',
-            'text' => 'required_without:file|nullable|string|max:100',
-            'wm'=>'required'
+            'text' => 'required_without:file|nullable|string|max:200',
+            'wm'=>'required',
+            'resize' =>'nullable',
+            'width'=>'',
+            'height'=>'',
         ]);
         if($request->hasFile('main_file')){
 
@@ -108,16 +102,16 @@ class ImageController extends Controller
                 if($request->get('text')){
                     //color of text
                     $color =($luminance ==('dark')?'#FFFFFF':'#000000');
-                    $size = $imageHeight/15;
+                    $size = ceil($imageHeight/15);
                     // create a new empty image resource
                     $watermark = Image::canvas($imageWidth, $size*3);
                     // write text
-                    $watermark->text($request->get('text'), 0, 0, function($font) use ($color, $size) {
-                        $font->file( public_path('fonts/Marlboro.ttf'));
+                    $watermark->text($request->get('text'), $imageWidth/2, $size*1.5, function($font) use ($color, $size) {
+                        $font->file( public_path('fonts/Roboto-Regular.ttf'));
                         $font->size($size);
                         $font->color($color);
-                        $font->align('left');
-                        $font->valign('top');
+                        $font->align('center');
+                        $font->valign('center');
                     });
                     //save watermark if need
                     $watermark->save('uploads/watermarks'.uniqid().'.png');
@@ -132,11 +126,11 @@ class ImageController extends Controller
             // create new Intervention Image and turn it into greyscale version
             $watermark->greyscale();
 
-            //set transparency to 50%
-            $watermark->opacity(50);
+            //set transparency to 30%
+            $watermark->opacity(30);
 
             //insert a watermark
-            $img->insert( $watermark, 'bottom-left');
+            $img->insert( $watermark, 'center');
 
             //save the image as a new file
             $img->save($imagePath);
@@ -147,7 +141,8 @@ class ImageController extends Controller
             $image->image = base64_encode($content);
             $image->save();
 
-            //destroy resource
+            //destroy resources
+            unlink($imagePath);
             $watermark->destroy();
             $img->destroy();
         }

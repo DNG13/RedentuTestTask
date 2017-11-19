@@ -11,9 +11,8 @@
                         <form action="{{ route('upload1') }}" enctype="multipart/form-data" method="post">
                             {{ csrf_field() }}
                             <h3>Завантажити зображення для накладання водяного знаку</h3>
-                            <div>Максимальний розмір файлу: 100 МБ</div>
                             <div>
-                                <label for="image_uploads">Choose images to upload (PNG, JPG, JPEG)</label>
+                                <label for="image_uploads">Оберіть файл для завантаження(PNG, JPG, JPEG)</label>
                                 <input name="main_file" type="file"  accept=".jpeg, .jpg, .png" required/>
                             </div>
                             @if ($errors->has('main_file'))
@@ -35,10 +34,9 @@
                                 </label>
                                 <div>
                                     <div>Щоб отримати найкращі результати, використовуйте прозорі одноколірні зображення.</div>
-                                    <div>Максимальний розмір файлу: 1 МБ</div>
                                 </div>
                                 <div>
-                                    <label for="image_uploads">Choose images or text to upload (PNG, JPG, JPEG)</label>
+                                    <label for="image_uploads">Оберіть файл для завантаження(PNG, JPG, JPEG)</label>
                                     <input name="file" type="file"/>
                                 </div>
                                 @if ($errors->has('file'))
@@ -53,12 +51,25 @@
                                 @endif
                                 <label for="wm_text">
                                     <input type="radio" value="text" name="wm">
-                                    Або текст
+                                    Або введіть текст
                                 </label>
                                 <div>
                                     <textarea rows="3" cols="60" name="text"></textarea>
                                 </div>
+                                <hr>
+                                <div>
+                                    <h3>Можливість для зміни розмірів зображення за поданними параметрами</h3>
+                                    <input name="resize" type="checkbox" value="yes">
+                                    <label for="resize">Використати</label>
+                                    <div>
+                                        <label for="width">Ширина</label>
+                                        <input name="width" type="number" max="4096"/>
+                                        <label for="height">Висота</label>
+                                        <input name="height" type="number" max="4096"/>
+                                    </div>
+                                </div>
                             </div>
+                            <hr>
                             <button type="submit" class="btn btn-primary">Save</button>
                         </form>
                     </div>
