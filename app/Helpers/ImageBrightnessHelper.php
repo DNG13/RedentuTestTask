@@ -3,8 +3,10 @@ namespace App\Helpers;
 
 class ImageBrightnessHelper
 {
-    function run($filename, $num_samples=10) {
-        $img = imagecreatefromjpeg($filename);
+    function run($filename, $extension, $num_samples=10) {
+        $img = ($extension=='png'?
+            imagecreatefrompng($filename):
+            imagecreatefromjpeg($filename));
         $width = imagesx($img);
         $height = imagesy($img);
         $x_step = intval($width/$num_samples);

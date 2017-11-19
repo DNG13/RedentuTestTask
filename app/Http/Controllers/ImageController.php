@@ -105,11 +105,12 @@ class ImageController extends Controller
             elseif($request->get('wm')=='text'){
                 if($request->get('text')){
                     //color of text
-                   // $color=(())?:;
+                    $color =($luminance ==('dark')?'#FFFFFF':'#000000');
+                    dd($color);
                     // write text
                     $img->text($request->get('text'), 0, 0, function($font) {
                         $font->size(80);
-                        $font->color('$color');
+                        $font->color($color);
                         $font->align('center');
                         $font->valign('top');
                         $font->angle(45);
