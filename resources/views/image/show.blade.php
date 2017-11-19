@@ -8,7 +8,7 @@
                     <div class="panel-heading">Show image</div>
                     <div class="panel-body">
                         @foreach($all_images as $key=>$image)
-                          <div>{{$key}}<img src="data:image/jpeg;base64, {{ base64_encode($image) }}"/></div>
+                          <div>{{$key}}<img src="data:image/jpeg;base64, {{$image }}"/></div>
                         @endforeach
                     </div>
                     <a class="btn btn-primary" href="/upload">To form for uploading image.</a>

@@ -3,7 +3,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Image as ImageModel;
-use Image;
+use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\File;
 use App\Helpers\ImageBrightnessHelper;
 
@@ -75,7 +75,7 @@ class ImageController extends Controller
             $img = Image::make($imagePath);
             //get image height and width
             $imageHeight = $img->height();
-            //$imageWidth = $img->width();
+            $imageWidth = $img->width();
 
             if($request->get('wm')=='file'){
                 if($request->hasFile('file')){
@@ -96,7 +96,6 @@ class ImageController extends Controller
 
                     //find out color of watermark
                     $wmLuminance = $imageBright->run($imageRealPath, $wmExtension);
-
                     // invert colour of watermark if the same as image
                     if( $luminance ==  $wmLuminance){
                         $watermark->invert();
@@ -108,10 +107,10 @@ class ImageController extends Controller
             elseif($request->get('wm')=='text'){
                 if($request->get('text')){
                     //color of text
-                    $color =($luminance ==('light')?'#FFFFFF':'#000000');
+                    $color =($luminance ==('dark')?'#FFFFFF':'#000000');
                     $size = $imageHeight/15;
                     // create a new empty image resource
-                    $watermark = Image::canvas( $size*10, $size);
+                    $watermark = Image::canvas($imageWidth, $size*3);
                     // write text
                     $watermark->text($request->get('text'), 0, 0, function($font) use ($color, $size) {
                         $font->file( public_path('fonts/Marlboro.ttf'));
@@ -121,7 +120,7 @@ class ImageController extends Controller
                         $font->valign('top');
                     });
                     //save watermark if need
-                    $watermark->save('uploads/watermarks'.uniqid().$request->get('text').'.png');
+                    $watermark->save('uploads/watermarks'.uniqid().'.png');
                 }
                 else{
                     return response()->json(['Status'=>true, 'Message'=>'Error with watermark text']);
@@ -145,7 +144,7 @@ class ImageController extends Controller
             //save image to database
             $image = new ImageModel;
             $content = File::get($imagePath);
-            $image->image = $content;
+            $image->image = base64_encode($content);
             $image->save();
 
             //destroy resource

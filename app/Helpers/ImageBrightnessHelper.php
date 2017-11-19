@@ -26,6 +26,6 @@ class ImageBrightnessHelper
         }
         // work out the average
         $avg_lum  = $total_lum/$sample_no;
-        return ($avg_lum > 170 ? 'dark' :'light');
+        return ($avg_lum < 170 ? 'dark' :'light');
     }
 }
