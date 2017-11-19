@@ -61,32 +61,41 @@ class ImageController extends Controller
             'wm'=>'required'
         ]);
         if($request->hasFile('main_file')){
+
             //$image = new ImageModel;
             $imageFile = $request->file('main_file');
             $imageName = uniqid(). $imageFile->getClientOriginalName();
-            $imageRealPath = $imageFile->getRealPath();
-            $extension = $imageFile->clientExtension();
+            $extension = $imageFile->extension();
             $imageFile->move(public_path('uploads'), $imageName);
-            $path = public_path('uploads').'/'.$imageName;
+            $imagePath = public_path('uploads').'/'.$imageName;
 
-            //findout color of image
-            $luminance = $imageBright->run($path,10);
+            //get image height and width
+            $imageSize = getimagesize( $imagePath);
+            $imageWidth = $imageSize[0];
+            $imageHeight = $imageSize[1];
 
+            //find out color of image
+            $luminance = $imageBright->run($imagePath, $extension);
             // create Image from file
-            $img = Image::make($path)->resize(150, 200);
+            $img = Image::make($imagePath);
+
             if($request->get('wm')=='file'){
                 if($request->hasFile('file')){
                     $imageFileWm = $request->file('file');
                     $imageRealPath = $imageFileWm->getRealPath();
 
+                    //parameters for resizing watermark
+                    $wmWidth  = $imageWidth/5;
+                    $wmHeight = $imageHeight/5;
                     // create a new Image instance for inserting
-                    $watermark = Image::make( $imageRealPath)->resize(50, 80);
+                    $watermark = Image::make($imageRealPath);
+                    $watermark->resize( $wmWidth, $wmHeight );
 
                     //insert a watermark
                     $img->insert( $watermark, 'center');
 
                     //save the image as a new file
-                    $img->save($path);
+                    $img->save($imagePath);
 
 //                    return response()->json(['Status'=>true, 'Message'=>'ok with file']);
                 }else{
@@ -95,15 +104,17 @@ class ImageController extends Controller
             }
             elseif($request->get('wm')=='text'){
                 if($request->get('text')){
+                    //color of text
+                   // $color=(())?:;
                     // write text
                     $img->text($request->get('text'), 0, 0, function($font) {
                         $font->size(80);
-                        $font->color('#f05a24');
+                        $font->color('$color');
                         $font->align('center');
                         $font->valign('top');
                         $font->angle(45);
                     });
-                    $img->save($path);
+                    $img->save($imagePath);
 //                    return response()->json(['Status'=>true, 'Message'=>'ok with text']);
                 }
                 else{
