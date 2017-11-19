@@ -51,6 +51,17 @@
                                 @endif
                                 <label for="wm_text">
                                     <input type="radio" value="text" name="wm">
+                                    @if ($errors->has('text'))
+                                        <div class="alert alert-danger">
+                                            There were some problems with your input.<br>
+                                            <ul>
+                                                @foreach ($errors->all() as $error)
+                                                    <li>{{ $error }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif
+
                                     Або введіть текст
                                 </label>
                                 <div>
@@ -61,11 +72,41 @@
                                     <h3>Можливість для зміни розмірів зображення за поданними параметрами</h3>
                                     <input name="resize" type="checkbox" value="yes">
                                     <label for="resize">Використати</label>
+                                    @if ($errors->has('resize'))
+                                        <div class="alert alert-danger">
+                                            There were some problems with your input.<br>
+                                            <ul>
+                                                @foreach ($errors->all() as $error)
+                                                    <li>{{ $error }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif
                                     <div>
                                         <label for="width">Ширина</label>
                                         <input name="width" type="number" max="4096"/>
+                                        @if ($errors->has('width'))
+                                            <div class="alert alert-danger">
+                                                There were some problems with your input.<br>
+                                                <ul>
+                                                    @foreach ($errors->all() as $error)
+                                                        <li>{{ $error }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                         <label for="height">Висота</label>
                                         <input name="height" type="number" max="4096"/>
+                                        @if ($errors->has('height'))
+                                            <div class="alert alert-danger">
+                                                There were some problems with your input.<br>
+                                                <ul>
+                                                    @foreach ($errors->all() as $error)
+                                                        <li>{{ $error }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>

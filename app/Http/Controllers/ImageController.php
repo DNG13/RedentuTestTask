@@ -47,13 +47,13 @@ class ImageController extends Controller
     }
     public function upload1(Request $request, ImageBrightnessHelper $imageBright){
         $this->validate($request,[
-            'main_file' => 'required|image|mimes:jpeg,jpg,png',
+            'main_file' => 'required|image|mimes:jpeg,jpg,png|max:4096',
             'file' => 'required_without:text|nullable|image|mimes:jpeg,jpg,png',
             'text' => 'required_without:file|nullable|string|max:200',
             'wm'=>'required',
             'resize' =>'nullable',
-            'width'=>'',
-            'height'=>'',
+            'width'=>'nullable|numeric|max:4096|min:100',
+            'height'=>'nullable|numeric|max:4096|min:100',
         ]);
         if($request->hasFile('main_file')){
 
@@ -67,6 +67,34 @@ class ImageController extends Controller
             $luminance = $imageBright->run($imagePath, $extension);
             // create Image from file
             $img = Image::make($imagePath);
+
+            //resizing image if need
+            if($request->resize == 'yes') {
+                $resizeWidth = $request->width;
+                $resizeHeight = $request->height;
+                if (!is_null($resizeWidth) || !is_null($resizeHeight)) {
+                    if($resizeHeight == null){
+                        $heightRatio = 0;
+                    }else{
+                        $heightRatio =$img->height() / $resizeHeight;
+                    };
+                    if($resizeWidth == null){
+                        $widthRatio = 0;
+                    }else{
+                        $widthRatio =$img->width() / $resizeWidth;
+                    };
+                    if ($heightRatio > $widthRatio) {
+                        $img->resize(null, $img->height(), function ($constraint) {
+                            $constraint->aspectRatio();
+                        });
+                    } else {
+                        $img->resize($img->width(), null, function ($constraint) {
+                            $constraint->aspectRatio();
+                        });
+                    }
+                    $img->save($imagePath);
+                }
+            }
             //get image height and width
             $imageHeight = $img->height();
             $imageWidth = $img->width();
