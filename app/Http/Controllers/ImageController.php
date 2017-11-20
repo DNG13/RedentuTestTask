@@ -9,28 +9,14 @@ use App\Helpers\ImageBrightnessHelper;
 
 class ImageController extends Controller
 {
-    public function index()
-    {
-        return view('image.upload');
-    }
-    public function upload(Request $request){
-        $this->validate($request,[
-            'file' => 'required|image|max:3000',
-        ]);
-        if($request->hasFile('file')){
-            $image = new ImageModel;
-            $file = $request->file('file');
-            $extension = $file->clientExtension();
-            $fileObject = $file->openFile();
-            $fileObject->rewind();
-            $content = $fileObject->fread($fileObject->getSize());
-            $image->image = $content;
-            $image->save();
-            return response()->json(['Status'=>true, 'Message'=>'Image uploaded']);
-        }
-        return redirect('/show');
-    }
+    /**
+     * @var
+     */
+    private $imageBright;
 
+    /**
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     */
     public function show()
     {
         $images = ImageModel::pluck('image');;
@@ -41,11 +27,23 @@ class ImageController extends Controller
         return view('image.show', compact('all_images'));
     }
 
-    public function index1()
+    /**
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     */
+    public function index()
     {
-        return view('image.upload1');
+        return view('image.upload');
     }
-    public function upload1(Request $request, ImageBrightnessHelper $imageBright){
+
+    /**
+     * @param Request $request
+     * @param ImageBrightnessHelper $imageBright
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\JsonResponse|\Illuminate\View\View
+     */
+    public function upload(Request $request, ImageBrightnessHelper $imageBright){
+
+        $this->imageBright = $imageBright;
+
         $this->validate($request,[
             'main_file' => 'required|image|mimes:jpeg,jpg,png|max:4096',
             'file' => 'required_without:text|nullable|image|mimes:jpeg,jpg,png',
@@ -55,6 +53,7 @@ class ImageController extends Controller
             'width'=>'nullable|numeric|max:4096|min:100',
             'height'=>'nullable|numeric|max:4096|min:100',
         ]);
+
         if($request->hasFile('main_file')){
 
             $imageFile = $request->file('main_file');
@@ -64,90 +63,33 @@ class ImageController extends Controller
             $imagePath = public_path('uploads').'/'.$imageName;
 
             //find out color of image
-            $luminance = $imageBright->run($imagePath, $extension);
+            $luminance = $this->imageBright->run($imagePath, $extension);
+
             // create Image from file
             $img = Image::make($imagePath);
 
             //resizing image if need
             if($request->resize == 'yes') {
-                $resizeWidth = $request->width;
-                $resizeHeight = $request->height;
-                if (!is_null($resizeWidth) || !is_null($resizeHeight)) {
-                    if($resizeHeight == null){
-                        $heightRatio = 0;
-                    }else{
-                        $heightRatio =$img->height() / $resizeHeight;
-                    };
-                    if($resizeWidth == null){
-                        $widthRatio = 0;
-                    }else{
-                        $widthRatio =$img->width() / $resizeWidth;
-                    };
-                    if ($heightRatio > $widthRatio) {
-                        $img->resize(null, $img->height(), function ($constraint) {
-                            $constraint->aspectRatio();
-                        });
-                    } else {
-                        $img->resize($img->width(), null, function ($constraint) {
-                            $constraint->aspectRatio();
-                        });
-                    }
-                    $img->save($imagePath);
-                }
+                $img = $this->resizeImage($img, $request);
             }
-            //get image height and width
-            $imageHeight = $img->height();
-            $imageWidth = $img->width();
 
-            if($request->get('wm')=='file'){
-                if($request->hasFile('file')){
-
-                    $imageFileWm = $request->file('file');
-                    $imageRealPath = $imageFileWm->getRealPath();
-
-                    //parameters for resizing watermark
-                    $wmHeight = $imageHeight/10;
-                    // create a new Image instance for inserting
-                    $watermark = Image::make($imageRealPath);
-                    $watermark->resize( null, $wmHeight, function ($constraint) {
-                        $constraint->aspectRatio();
-                    });
-
-                    //get extension for watermark
-                    $wmExtension = ($watermark->mime()=='image/png')?'png':'';
-
-                    //find out color of watermark
-                    $wmLuminance = $imageBright->run($imageRealPath, $wmExtension);
-                    // invert colour of watermark if the same as image
-                    if( $luminance ==  $wmLuminance){
-                        $watermark->invert();
-                    }
-                }else{
+            //create watermark
+            if($request->get('wm')=='file') {
+                if($request->hasFile('file')) {
+                    $watermark = $this->prepareImageWatermark($img, $request, $luminance);
+                } else {
                     return response()->json(['Status'=>true, 'Message'=>'Error with watermark file']);
                 }
             }
-            elseif($request->get('wm')=='text'){
-                if($request->get('text')){
-                    //color of text
-                    $color =($luminance ==('dark')?'#FFFFFF':'#000000');
-                    $size = ceil($imageHeight/15);
-                    // create a new empty image resource
-                    $watermark = Image::canvas($imageWidth, $size*3);
-                    // write text
-                    $watermark->text($request->get('text'), $imageWidth/2, $size*1.5, function($font) use ($color, $size) {
-                        $font->file( public_path('fonts/Roboto-Regular.ttf'));
-                        $font->size($size);
-                        $font->color($color);
-                        $font->align('center');
-                        $font->valign('center');
-                    });
+            elseif($request->get('wm')=='text') {
+                if($request->get('text')) {
+                    $watermark = $this->prepareTextWatermark($img, $request, $luminance);
                     //save watermark if need
-                    $watermark->save('uploads/watermarks'.uniqid().'.png');
-                }
-                else{
+                    //$watermark->save('uploads/watermarks'.uniqid().'.png');
+                } else {
                     return response()->json(['Status'=>true, 'Message'=>'Error with watermark text']);
                 }
-            }else{
+            } else {
                 return response()->json(['Status'=>true, 'Message'=>'Error with watermark']);
             }
 
@@ -174,6 +116,97 @@ class ImageController extends Controller
             $watermark->destroy();
             $img->destroy();
         }
-        return view('image.upload1');
+
+        return view('image.upload');
+    }
+
+    /**
+     * @param $img
+     * @param $request
+     * @return mixed
+     */
+    private function resizeImage($img, $request)
+    {
+        $resizeWidth = $request->width;
+        $resizeHeight = $request->height;
+        if ($resizeWidth || $resizeHeight) {
+
+            $heightRatio = $resizeHeight == null ? $heightRatio = 0 : $heightRatio = $img->height()/$resizeHeight;
+
+            $widthRatio = $resizeWidth == null ? $widthRatio = 0 : $widthRatio = $img->width()/$resizeWidth;
+
+            if ($heightRatio > $widthRatio) {
+                $img->resize(null, $resizeHeight, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+            } else {
+                $img->resize($resizeWidth, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+            }
+        }
+
+        return $img;
+    }
+
+    /**
+     * @param $img
+     * @param $request
+     * @param $luminance
+     * @return mixed
+     */
+    private function prepareImageWatermark($img, $request, $luminance)
+    {
+        $imageFileWm = $request->file('file');
+        $imageRealPath = $imageFileWm->getRealPath();
+
+        //parameters for resizing watermark
+        $wmHeight = $img->height()/10;
+
+        // create a new Image instance for inserting
+        $watermark = Image::make($imageRealPath);
+        $watermark->resize( null, $wmHeight, function ($constraint) {
+            $constraint->aspectRatio();
+        });
+
+        //get extension for watermark
+        $wmExtension = ($watermark->mime()=='image/png')?'png':'';
+
+        //find out color of watermark
+        $wmLuminance = $this->imageBright->run($imageRealPath, $wmExtension);
+
+        // invert colour of watermark if the same as image
+        if( $luminance == $wmLuminance){
+            $watermark->invert();
+        }
+
+        return $watermark;
+    }
+
+    /**
+     * @param $img
+     * @param $request
+     * @param $luminance
+     * @return mixed
+     */
+    private function prepareTextWatermark($img, $request, $luminance)
+    {
+        //color of text
+        $color =($luminance ==('dark')?'#FFFFFF':'#000000');
+        $size = ceil($img->height()/15);
+
+        // create a new empty image resource
+        $watermark = Image::canvas($img->width(), $size*3);
+
+        // write text
+        $watermark->text($request->get('text'), $img->width()/2, $size*1.5, function($font) use ($color, $size) {
+            $font->file( public_path('fonts/Roboto-Regular.ttf'));
+            $font->size($size);
+            $font->color($color);
+            $font->align('center');
+            $font->valign('center');
+        });
+
+        return $watermark;
     }
 }

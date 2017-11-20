@@ -11,9 +11,6 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
 Route::get('/upload','ImageController@index')->name('upload');
 Route::post('/upload','ImageController@upload');
 Route::get('/show','ImageController@show')->name('show');
