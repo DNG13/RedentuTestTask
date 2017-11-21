@@ -11,13 +11,7 @@
 |
 */
 
-Route::get('/upload','ImageController@index')->name('upload');
-Route::post('/upload','ImageController@upload');
+Route::get('/','ImageController@index')->name('upload');
+Route::post('/','ImageController@upload');
 Route::get('/show','ImageController@show')->name('show');
 
-Route::get('/upload1','ImageController@index1')->name('upload1');
-Route::post('/upload1','ImageController@upload1');
-
-Auth::routes();
-
-Route::get('/home', 'HomeController@index')->name('home');

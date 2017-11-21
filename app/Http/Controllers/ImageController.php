@@ -161,7 +161,7 @@ class ImageController extends Controller
         $imageRealPath = $imageFileWm->getRealPath();
 
         //parameters for resizing watermark
-        $wmHeight = $img->height()/10;
+        $wmHeight = $img->height()/5;
 
         // create a new Image instance for inserting
         $watermark = Image::make($imageRealPath);
